@@ -30,3 +30,6 @@
 *.exe
 *.out
 *.app
+
+MCMC
+MC_traj.lammpstrj
