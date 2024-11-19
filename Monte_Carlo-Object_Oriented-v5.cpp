@@ -13,6 +13,7 @@ R. K. Lindsey (2023)
 #include<string>
 #include<vector>
 #include<cmath>
+#include <chrono>  // For high_resolution_clock, duration, etc.
 
 #include "MersenneTwiser.h"
 
@@ -244,6 +245,7 @@ void LJ_model::get_single_particle_contributions(const vector<xyz> & coords, int
     
     static double rij;
     static xyz    rij_vec;
+    using namespace std::chrono;
 
     /* Write code to determine the contributions to the total system energy, forces, and stresses due to the selected atom.
     Self interactions should not be included.
@@ -260,25 +262,40 @@ void LJ_model::get_single_particle_contributions(const vector<xyz> & coords, int
         // if within the model cutoff - we'll use this if the move is accepted
     
     */
+
+
     for(int j=0; j<coords.size(); j++)
     {
         // if(coords[j].x==selected_atom_coords.x && coords[j].y==selected_atom_coords.y && coords[j].z==selected_atom_coords.z)
         //     continue;
         if(j!=selected_atom)
         {
+            auto start1 = high_resolution_clock::now();
             rij = get_dist(selected_atom_coords, coords[j],boxdim,rij_vec);
+            auto end1 = high_resolution_clock::now();
+            duration<double> duration1 = end1 - start1;        
+            std::cout << "Time for distance calc: " << duration1.count() << " seconds" << std::endl;
 
             if(rij<rcut)
             {
+                auto start2 = high_resolution_clock::now();
                 energy_selected += get_eij(rij);
                 get_fij(rij,rij_vec,force);
                 stress_selected.x += force.x * rij_vec.x;
                 stress_selected.y += force.y * rij_vec.y;
                 stress_selected.z += force.z * rij_vec.z;
+                auto end2 = high_resolution_clock::now();
+                duration<double> duration2 = end2 - start2;        
+                std::cout << "Time for force calc: " << duration2.count() << " seconds" << std::endl;
+
             }
+
         }
         //still calculating its distance with itself, too.
     }
+
+
+
 }
 
 
@@ -426,6 +443,8 @@ int main(int argc, char* argv[])
     double stat_avgEsq = 0;
     double stat_avgP   = 0;
     
+
+
     for (int i=0; i<nsteps; i++)
     {
         // Select a random particle. The syntax below shows how to use the random number generator. This generate a random integer between 0 and natoms-1
@@ -467,6 +486,7 @@ int main(int argc, char* argv[])
         // 4. Determine the energy contribution of that particle with the system **in it's trial position**
     
         LJ.get_single_particle_contributions(system.coords, selected_atom, trial_position, system.boxdim, enew_selected, snew_selected);
+
 
         if (i >= nequil) // Only do Widom tests for the equilibrated portion of the simulation
         {        
