@@ -311,6 +311,13 @@ int main(int argc, char* argv[])
         {
             system.write_frame(i);
 
+	    cout << "Debug: " << endl;
+	    cout << sigma << endl;
+	    cout << pressure << endl;
+	    cout << temp << endl; 
+	    cout << redden << endl;
+
+
             cout << "Step:  " << setw(10) << left << i;
             cout << " NAcc:  " << setw(10) << left << setprecision(3) <<  naccepted_moves;
             cout << " fAcc:  " << setw(10) << left << fixed << setprecision(3) << fraction_accepted;

@@ -62,6 +62,7 @@ void system_coordinates::generate_coords()
 
     numden = density / molmass * nav / pow(cm2m,3.0) * pow(A2m,3.0); // Density in atoms per Ang^3
     
+
     cout << "# Num. den. (atoms/Ang): " << numden << endl;
     
     boxdim.x = pow(natoms/numden, 1.0/3.0); 

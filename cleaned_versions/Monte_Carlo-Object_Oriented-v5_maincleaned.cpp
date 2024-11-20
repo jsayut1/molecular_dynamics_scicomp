@@ -145,7 +145,8 @@ void run_simulation(system_coordinates &system, LJ_model &LJ, MTRand &mtrand, in
         max_displacement = update_max_displacement(fraction_accepted, system.boxdim.x, max_displacement);
 
         double numden = redden / pow(A2m,3.0) * pow(cm2m,3.0) / nav * molmass / pow(sigma,3.0);
-        double pressure = numden * temp + 1.0 / (3.0 * pow(system.boxdim.x, 3.0)) * (stensor_x + stensor_y + stensor_z);
+        double pressure = numden*temp + 1.0/3.0/pow(system.boxdim.x,3.0)*(stensor.x + stensor.y + stensor.z);
+
 
         double stat_avgE   = 0;
         double stat_avgEsq = 0;        
@@ -169,6 +170,13 @@ void run_simulation(system_coordinates &system, LJ_model &LJ, MTRand &mtrand, in
 }
 
 void print_statistics(int i, int naccepted_moves, double fraction_accepted, double max_displacement, double energy, double natoms, double LJ_epsilon, double pressure, double temp, double redden, double LJ_sigma, double widom_avg, double widom_trials, double Cv, system_coordinates &system) {
+    
+    cout << "Debug: " << endl;
+    cout << LJ_sigma << endl;
+    cout << pressure << endl;
+    cout << temp << endl; 
+    cout << redden << endl; 
+
     cout << "Step:  " << setw(10) << left << i;
     cout << " NAcc:  " << setw(10) << left << setprecision(3) <<  naccepted_moves;
     cout << " fAcc:  " << setw(10) << left << fixed << setprecision(3) << fraction_accepted;
