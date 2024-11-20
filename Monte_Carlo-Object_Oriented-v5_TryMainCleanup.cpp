@@ -13,71 +13,58 @@ R. K. Lindsey (2023)
 #include<string>
 #include<vector>
 #include<cmath>
-#include <chrono>  // For high_resolution_clock, duration, etc.
 
 #include "MersenneTwiser.h"
 #include "Toolbox.hpp"
 #include "system_coordintaes.hpp"
 #include "LJ_model.hpp"
+#include "inputs.hpp"
 
 using namespace std;
 
-
+void write_initial(int natoms, string atmtyp, double molmass, double density, double sigma, double epsilon, double rcut, double temp, double nsteps, int iofrq, double redden);
 
 
 int main(int argc, char* argv[])
 {
     
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    // Set user-defined variables (Read in from input file at some point)
-    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////////////
+    // // Set user-defined variables (Read in from input file at some point)
+    // ///////////////////////////////////////////////////////////////////////////////////////////////
     
-    int     seed    = stoi(argv[1]);// Seed for random number generator - read from commandline 
-    double  redden  = stod(argv[2]);// Reduced density - read from commandline
+    seed    = stoi(argv[1]);// Seed for random number generator - read from commandline 
+    redden  = stod(argv[2]);// Reduced density - read from commandline
     
-    //////// Static variables 
+    // //////// Static variables 
     
-    MTRand  mtrand(seed); // Seed the (psuedo) random number generator
+    // MTRand  mtrand(seed); // Seed the (psuedo) random number generator
     
-    double  sigma   = 3.4;          // Units: Angstrom
-    double  epsilon = 120;          // Units: K/k_B
-    double  rcut    = 4*sigma;      // Model outer cutoff
+    // double  sigma   = 3.4;          // Units: Angstrom
+    // double  epsilon = 120;          // Units: K/k_B
+    // double  rcut    = 4*sigma;      // Model outer cutoff
     
-    int     natoms  = 500;          // Number of atoms in the system
-    string  atmtyp  = "Ar";         // Atom type (atomic symbol)
-    double  molmass = 39.948;       // Mass of an particle of atmtyp (Atomic mass in the case of an argon atom)
-    double  density = redden / pow(A2m,3.0) * pow(cm2m,3.0) / nav * molmass / pow(sigma,3.0);     // System density; Units: g/cm^3
-    double  numden;                 // System number density; Units: atoms/Ang^3 - will be calculated later on
+    // TODO: Remove below declarations
+    // TODO: figure out whether the object-oriented version is working the same way
+    natoms  = 500;          // Number of atoms in the system
+    atmtyp  = "Ar";         // Atom type (atomic symbol)
+    molmass = 39.948;       // Mass of an particle of atmtyp (Atomic mass in the case of an argon atom)
+    density = redden / pow(A2m,3.0) * pow(cm2m,3.0) / nav * molmass / pow(sigma,3.0);     // System density; Units: g/cm^3
+    // double  numden;                 // System number density; Units: atoms/Ang^3 - will be calculated later on
 
-    double  temp    = 1.2*epsilon;  // Temperature, in K
-    double  nsteps  = 5e6;          // Number of MC steps
-    int     iofrq   = 2e3;          // Frequency to output statistics and trajectory
-    int     nequil  = 1e6;          // Equilibration period (chemical potential and heat capacity only collected after this many steps)
+    // double  temp    = 1.2*epsilon;  // Temperature, in K
+    // double  nsteps  = 5e6;          // Number of MC steps
+    // int     iofrq   = 2e3;          // Frequency to output statistics and trajectory
+    // int     nequil  = 1e6;          // Equilibration period (chemical potential and heat capacity only collected after this many steps)
     
     //////// Print information for user
-
-    cout << "# Number of atoms:       " << natoms     << endl;
-    cout << "# Atom type:             " << atmtyp     << endl;
-    cout << "# Molar Mass (g/mol):    " << molmass    << endl;
-    cout << "# Density (g/cm^3):      " << density    << endl;
-    cout << "# LJ sigma (Angstrom):   " << sigma      << endl;
-    cout << "# LJ epsilon/kB (K):     " << epsilon    << endl;
-    cout << "# LJ cutoff (Angstrom):  " << rcut       << endl;
-    cout << "# LJ cutoff (sigma):     " << rcut/sigma << endl;
-    cout << "# Temperature (K):       " << temp       << endl;
-    cout << "# Number MC steps:       " << nsteps     << endl;
-    cout << "# Output frequency:      " << iofrq      << endl;
-    
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Initialize the system - arguments are natoms, atom type, density (g/cc), molar mass, 
     // and whether to print a simulation trajectory for object
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    
+
     system_coordinates system(natoms, atmtyp, density, molmass);
     system.generate_coords();
-    
-    cout << "# reduc. density (rho*): " << redden /*write this*/ << endl;
-    cout << "# reduc. temp (T*):      " << temp / epsilon /*write this*/ << endl;
+    write_initial(natoms,atmtyp,molmass,density,sigma,epsilon,rcut,temp,nsteps,iofrq,redden);
 
     // Intialize the model - arguments are sigma (Angstroms), epsilon (K), and outer cutoff (Angstroms)
     
@@ -87,21 +74,21 @@ int main(int argc, char* argv[])
     // Determine initial system energy and pressure
     ///////////////////////////////////////////////////////////////////////////////////////////////
     
-    double  rij;                // Scalar distance between atoms
-    xyz     rij_vec;            // Distance vector between atoms
+    // double  rij;                // Scalar distance between atoms
+    // xyz     rij_vec;            // Distance vector between atoms
     
-    double  energy = 0;         // Energy for the configuration
+    // double  energy = 0;         // Energy for the configuration
    
-    double widom_factor = 0;    // The exponential term in the Widom chemical potential expression
-    double widom_trials = 0;    // Number of Widom insertion attempts
-    double widom_avg    = 0;    // Average value of the wWidom factor
+    // double widom_factor = 0;    // The exponential term in the Widom chemical potential expression
+    // double widom_trials = 0;    // Number of Widom insertion attempts
+    // double widom_avg    = 0;    // Average value of the wWidom factor
         
-    double Eavg = 0;            // Average energy
-    double Esqavg = 0;          // Square of average energy
+    // double Eavg = 0;            // Average energy
+    // double Esqavg = 0;          // Square of average energy
 
    
-    xyz     force;              // Force on a given atom
-    xyz     stensor;            // System stress tensor (diagonal components only, i.e., xx, yy, zz)
+    // xyz     force;              // Force on a given atom
+    // xyz     stensor;            // System stress tensor (diagonal components only, i.e., xx, yy, zz)
     stensor.x = 0;
     stensor.y = 0;
     stensor.z = 0;
@@ -134,8 +121,6 @@ int main(int argc, char* argv[])
                 stensor.x += force.x * rij_vec.x;
                 stensor.y += force.y * rij_vec.y;
                 stensor.z += force.z * rij_vec.z;
-            
-
             }
         }
     }
@@ -147,32 +132,30 @@ int main(int argc, char* argv[])
     ///////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////
     
-    double max_displacement = 0.5*system.boxdim.x;  // Start trial displacements at one angstrom
+    max_displacement = 0.5*system.boxdim.x;  // Start trial displacements at one angstrom
 
-    int     selected_atom;
+    // int     selected_atom;
     
-    double  eold_selected;  // Pre-trial-move energy of the selected atom
-    double  enew_selected;  // Post-trial-move energy of the selected atom
-    double  delta_energy;   // Difference between old and new (trial) energy
-    xyz     sold_selected;  // Pre-trial-move stress tensor diagonal of the selected atom
-    xyz     snew_selected;  // Post-trial-move stress tensor diagonal of the selected atom
+    // double  eold_selected;  // Pre-trial-move energy of the selected atom
+    // double  enew_selected;  // Post-trial-move energy of the selected atom
+    // double  delta_energy;   // Difference between old and new (trial) energy
+    // xyz     sold_selected;  // Pre-trial-move stress tensor diagonal of the selected atom
+    // xyz     snew_selected;  // Post-trial-move stress tensor diagonal of the selected atom
 
-    xyz     trial_displacement;    
-    xyz     trial_position;
+    // xyz     trial_displacement;    
+    // xyz     trial_position;
     
-    int     naccepted_moves = 0;    // Number of accepted moves
-    double  fraction_accepted;      // Fraction of attempted moves that have been accepted
-    int     nrunningav_moves = 0;   // Move index for running averages (doesn't start until equilibration period has ended)
+    // int     naccepted_moves = 0;    // Number of accepted moves
+    // double  fraction_accepted;      // Fraction of attempted moves that have been accepted
+    // int     nrunningav_moves = 0;   // Move index for running averages (doesn't start until equilibration period has ended)
 
-    double pressure;
-    double Cv;
+    // double pressure;
+    // double Cv;
 
-    double stat_avgE   = 0;
-    double stat_avgEsq = 0;
-    double stat_avgP   = 0;
+    // double stat_avgE   = 0;
+    // double stat_avgEsq = 0;
+    // double stat_avgP   = 0;
     
-
-
     for (int i=0; i<nsteps; i++)
     {
         // Select a random particle. The syntax below shows how to use the random number generator. This generate a random integer between 0 and natoms-1
@@ -214,7 +197,6 @@ int main(int argc, char* argv[])
         // 4. Determine the energy contribution of that particle with the system **in it's trial position**
     
         LJ.get_single_particle_contributions(system.coords, selected_atom, trial_position, system.boxdim, enew_selected, snew_selected);
-
 
         if (i >= nequil) // Only do Widom tests for the equilibrated portion of the simulation
         {        
@@ -305,8 +287,7 @@ int main(int argc, char* argv[])
             
             Cv = (avgEsq - pow(avgE,2)) / (pow(temp,2)*kB);/*write this - this should only be the dE/dT portion*/
         }    
-        
-   
+           
         if ( (i+1) % iofrq == 0)
         {
             system.write_frame(i);
@@ -345,7 +326,24 @@ int main(int argc, char* argv[])
 
 
 
+void write_initial(int natoms, string atmtyp, double molmass, double density, double sigma, double epsilon, double rcut, double temp, double nsteps, int iofrq, double redden)
+{
+    cout << "# Number of atoms:       " << natoms     << endl;
+    cout << "# Atom type:             " << atmtyp     << endl;
+    cout << "# Molar Mass (g/mol):    " << molmass    << endl;
+    cout << "# Density (g/cm^3):      " << density    << endl;
+    cout << "# LJ sigma (Angstrom):   " << sigma      << endl;
+    cout << "# LJ epsilon/kB (K):     " << epsilon    << endl;
+    cout << "# LJ cutoff (Angstrom):  " << rcut       << endl;
+    cout << "# LJ cutoff (sigma):     " << rcut/sigma << endl;
+    cout << "# Temperature (K):       " << temp       << endl;
+    cout << "# Number MC steps:       " << nsteps     << endl;
+    cout << "# Output frequency:      " << iofrq      << endl;
+    cout << "# reduc. density (rho*): " << redden /*write this*/ << endl;
+    cout << "# reduc. temp (T*):      " << temp / epsilon /*write this*/ << endl;
 
+
+}
 
 
 
