@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
     MTRand  mtrand(seed); // Seed the (psuedo) random number generator
 
     //////// MPI Initialization
-    int rank, nprocs, my_natoms, mpierr, rank_IC, rank_owner;
+    int rank, nprocs, my_natoms, mpierr, rank_IC, rank_owner,my_atom_start;
     MPI_Init(&argc, &argv);                          
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);           
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -81,11 +81,14 @@ int main(int argc, char* argv[])
     
     my_natoms=natoms/nprocs;
     if ( natoms%nprocs >rank) my_natoms=my_natoms+1;
+    my_atom_start=rank*(natoms/nprocs) + min(rank,natoms%nprocs);
+
 
     cout << "---------" << endl;
     cout << "MPI !" << endl;
     cout << "Rank: " << rank     << endl;
     cout << "My natoms " << my_natoms    << endl;
+    cout << "My starting atom " << my_atom_start    << endl;
     cout << "---------" << endl;
 
 
@@ -100,8 +103,10 @@ int main(int argc, char* argv[])
     system_coordinates system(natoms, atmtyp, density, molmass);
     system.generate_coords();
     
-    if(rank==0){
+
     system_coordinates ICsystem(natoms, atmtyp, density, molmass);
+    
+    if(rank==0){
     ICsystem.generate_coords();
     }
     system_coordinates my_system(my_natoms, atmtyp, density, molmass);
@@ -179,6 +184,18 @@ int main(int argc, char* argv[])
 
     }
 
+
+    // Broadcast ICsystem
+    // ? MPI_Bcast(&ICsystem, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+
+    // TODO: fix the local system coordinates below, should not generate coordinates more than once
+
+    cout << "---------" << endl;
+    cout << "Local system coords!" << endl;
+    cout << "Rank: " << rank     << endl;
+    my_system.generate_coords();
+    cout << "   " << endl;
 
 
 
