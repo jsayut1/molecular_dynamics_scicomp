@@ -31,5 +31,8 @@
 *.out
 *.app
 
+# Text output
+*.txt
+
 MCMC
 MC_traj.lammpstrj

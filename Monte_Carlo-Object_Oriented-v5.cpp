@@ -35,6 +35,13 @@ int main(int argc, char* argv[])
     int     seed    = stoi(argv[1]);// Seed for random number generator - read from commandline 
     double  redden  = stod(argv[2]);// Reduced density - read from commandline
     
+
+    //////// MPI Initialization
+    // int size, rank;
+    // MPI_Init(&argc, &argv);                          
+    // MPI_Comm_size(MPI_COMM_WORLD, &size);           
+    // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     //////// Static variables 
     
     MTRand  mtrand(seed); // Seed the (psuedo) random number generator
