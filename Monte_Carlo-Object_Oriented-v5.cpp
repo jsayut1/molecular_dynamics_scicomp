@@ -40,9 +40,9 @@ int main(int argc, char* argv[])
 
     //////// MPI Initialization
     int rank, nprocs, my_natoms, mpierr, rank_IC, rank_owner;
-    MPI_Init(&argc, &argv);                          
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);           
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    // MPI_Init(&argc, &argv);                          
+    // MPI_Comm_size(MPI_COMM_WORLD, &nprocs);           
+    // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     rank_IC=0;
 
     //////// Static variables 
@@ -79,14 +79,14 @@ int main(int argc, char* argv[])
     //////// Set up MPI and print
 
     
-    my_natoms=natoms/nprocs;
-    if ( natoms%nprocs >rank) my_natoms=my_natoms+1;
+    // my_natoms=natoms/nprocs;
+    // if ( natoms%nprocs >rank) my_natoms=my_natoms+1;
 
-    cout << "---------" << endl;
-    cout << "MPI !" << endl;
-    cout << "Rank: " << rank     << endl;
-    cout << "My natoms " << my_natoms    << endl;
-    cout << "---------" << endl;
+    // cout << "---------" << endl;
+    // cout << "MPI !" << endl;
+    // cout << "Rank: " << rank     << endl;
+    // cout << "My natoms " << my_natoms    << endl;
+    // cout << "---------" << endl;
 
 
 
@@ -100,11 +100,6 @@ int main(int argc, char* argv[])
     system_coordinates system(natoms, atmtyp, density, molmass);
     system.generate_coords();
     
-    if(rank==0){
-    system_coordinates ICsystem(natoms, atmtyp, density, molmass);
-    ICsystem.generate_coords();
-    }
-    system_coordinates my_system(my_natoms, atmtyp, density, molmass);
 
 
     cout << "# reduc. density (rho*): " << redden /*write this*/ << endl;
@@ -113,7 +108,6 @@ int main(int argc, char* argv[])
     // Intialize the model - arguments are sigma (Angstroms), epsilon (K), and outer cutoff (Angstroms)
     
     LJ_model LJ(sigma, epsilon, rcut);
-    LJ_model my_LJ(sigma, epsilon, rcut);
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -141,11 +135,10 @@ int main(int argc, char* argv[])
 
 
 
-    if(rank==0){
 
-    for (int i=0; i<ICsystem.natoms; i++)                                                                         
+    for (int i=0; i<system.natoms; i++)                                                                         
     {
-        for (int j=i+1; j<ICsystem.natoms; j++)
+        for (int j=i+1; j<system.natoms; j++)
         {
             // Get the scalar distance and distance vector between atoms, using MIC
 
@@ -158,7 +151,7 @@ int main(int argc, char* argv[])
             /*write this*/
             if(rij<rcut)
             {
-                energy+=my_LJ.get_eij(rij);
+                energy+=LJ.get_eij(rij);
             }
             
             // Determine the atom pair's contribution to the total system pressure - again, only perform 
@@ -167,7 +160,7 @@ int main(int argc, char* argv[])
             /*write this*/
             if(rij<rcut)
             {
-                my_LJ.get_fij(rij, rij_vec, force);
+                LJ.get_fij(rij, rij_vec, force);
                 stensor.x += force.x * rij_vec.x;
                 stensor.y += force.y * rij_vec.y;
                 stensor.z += force.z * rij_vec.z;
@@ -177,13 +170,13 @@ int main(int argc, char* argv[])
         }
     }
 
-    }
+    
 
 
 
 
-    MPI_Finalize();
-    return rank_IC;
+    //MPI_Finalize();
+    //return rank_IC;
 
 
 
