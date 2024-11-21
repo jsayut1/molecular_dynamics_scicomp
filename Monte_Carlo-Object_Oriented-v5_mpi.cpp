@@ -150,7 +150,7 @@ int main(int argc, char* argv[])
             // Get the scalar distance and distance vector between atoms, using MIC
 
             /*write this*/
-            rij = get_dist(system.coords[i],system.coords[j],system.boxdim,rij_vec);
+            rij = get_dist(ICsystem.coords[i],ICsystem.coords[j],ICsystem.boxdim,rij_vec);
                       
             // Determine atom pair's contirbution to total system energy - remember to only perform the 
             // calculation if the pair distance is within the model cutoff
