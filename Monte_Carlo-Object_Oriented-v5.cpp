@@ -182,46 +182,98 @@ int main(int argc, char* argv[])
 
     for (int i=0; i<nsteps; i++)
     {
-        // Select a random particle. The syntax below shows how to use the random number generator. This generate a random integer between 0 and natoms-1
-        
-        selected_atom = int(mtrand()*system.natoms);
-        
-        // Determine contributions to the system's energy, force, and stress due to the selected atom 
-        
-        LJ.get_single_particle_contributions(system.coords, selected_atom, system.coords[selected_atom], system.boxdim, eold_selected, sold_selected);
-        
-        
-        // Attempt to randomly move a particle - this is a multistep process
-        
-        // 1. Generate the trial **displacement** in x, y, and z - the particle should be able to move in positive
-        // and negative directions, i.e., +/- the maximum displacement
+        // MPI: rank_IC selects which rank owns the particle that gets pushed (randomly)
+        // if (rank==rank_IC) {
+        //     rank_owner=int(mtrand()*nprocs)
 
-        /*write this*/
+        // MPI: rank_IC sends the owner rank to everyone else (MPI_Bcast)
+        // int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root, 
+        //    MPI_Comm comm )
+        // } 
+        // MPI: everyone receives the owner rank from rank_IC (MPI_Receive)
 
-        trial_displacement.x = (mtrand()*2.0-1.0)*max_displacement;
-        trial_displacement.y = (mtrand()*2.0-1.0)*max_displacement;
-        trial_displacement.z = (mtrand()*2.0-1.0)*max_displacement;
-        
-        // 2. Generate the trial **position** in x, y, and z based on the displacement
-        
-        /*write this*/
+        // MPI: everyone calls broadcast 
+        //     mpierr=MPI_Bcast(&rank_owner,1,MPI_INT,rank_IC,MPI_COMM_WORLD);
 
-        trial_position.x = trial_displacement.x + system.coords[selected_atom].x;
-        trial_position.y = trial_displacement.y + system.coords[selected_atom].y;
-        trial_position.z = trial_displacement.z + system.coords[selected_atom].z;
-        
-        // 3. Apply PBC if the particle has moved outside the box
-        
-        /*write this*/        
+        // MPI: owner chooses a particle randomly
+        // if (rank==rank_owner) {
+            // Select a random particle. The syntax below shows how to use the random number generator. This generate a random integer between 0 and natoms-1
+            // selected_atom = int(mtrand()*system.natoms);
 
-        trial_position.x -= floor(trial_position.x/system.boxdim.x)*system.boxdim.x;
-        trial_position.y -= floor(trial_position.y/system.boxdim.y)*system.boxdim.y;
-        trial_position.z -= floor(trial_position.z/system.boxdim.z)*system.boxdim.z;
-        
-        // 4. Determine the energy contribution of that particle with the system **in it's trial position**
-    
-        LJ.get_single_particle_contributions(system.coords, selected_atom, trial_position, system.boxdim, enew_selected, snew_selected);
+            // MPI: owner calculates the trial displacement and position
 
+            // 1. Generate the trial **displacement** in x, y, and z - the particle should be able to move in positive
+            // and negative directions, i.e., +/- the maximum displacement
+
+            trial_displacement.x = (mtrand()*2.0-1.0)*max_displacement;
+            trial_displacement.y = (mtrand()*2.0-1.0)*max_displacement;
+            trial_displacement.z = (mtrand()*2.0-1.0)*max_displacement;
+            
+            // // 2. Generate the trial **position** in x, y, and z based on the displacement
+            
+            trial_position.x = trial_displacement.x + system.coords[selected_atom].x;
+            trial_position.y = trial_displacement.y + system.coords[selected_atom].y;
+            trial_position.z = trial_displacement.z + system.coords[selected_atom].z;
+            
+            // // 3. Apply PBC if the particle has moved outside the box
+            
+            trial_position.x -= floor(trial_position.x/system.boxdim.x)*system.boxdim.x;
+            trial_position.y -= floor(trial_position.y/system.boxdim.y)*system.boxdim.y;
+            trial_position.z -= floor(trial_position.z/system.boxdim.z)*system.boxdim.z;
+
+            // MPI: Convert relevant quantities to C / MPI supported data types
+            // nope - selectedAtomCoords=&system.coords[selected_atom][0];
+            // selectedAtomCoords[0]=system.coords[selected_atom].x;
+            // selectedAtomCoords[1]=system.coords[selected_atom].y;
+            // selectedAtomCoords[2]=system.coords[selected_atom].z;
+            // trialPosition[0]=trial_position.x;
+            // trialPosition[1]=trial_position.y;
+            // trialPosition[2]=trial_position.z;
+
+        // }
+
+        // declarations for MPI communication variables
+        // double selectedAtomCoords[3];
+        // double trialPosition[3];
+        // xyz selectedAtomCoordsXYZ
+
+
+        // MPI: owner sends trial displacement and position to everyone else and everyone else receives (MPI_Bcast)
+        // int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root, 
+        //    MPI_Comm comm )        
+        // mpierr=MPI_Bcast(selectedAtomCoords,3,MPI_DOUBLE,rank_owner,MPI_COMM_WORLD);
+        // mpierr=MPI_Bcast(trialPosition,3,MPI_DOUBLE,rank_owner,MPI_COMM_WORLD);
+
+        // convert back to C data types
+        // system.coords[selected_atom].x=selectedAtomCoords[0];
+        // system.coords[selected_atom].y=selectedAtomCoords[1];
+        // system.coords[selected_atom].z=selectedAtomCoords[2];
+        // trial_position.x=trialPosition[0];
+        // trial_position.y=trialPosition[1];
+        // trial_position.z=trialPosition[2];
+
+        // MPI: all ranks calculate the energy contribution between the owner's selected atom and all of their atoms
+        // MPI: owner calls the normal function, everyone else calls the not_owner version that doesn't need the index of the selected atom
+
+        // if (rank==rank_owner) {
+            // Determine contributions to the system's energy, force, and stress due to the selected atom
+            LJ.get_single_particle_contributions(system.coords, selected_atom, system.coords[selected_atom], system.boxdim, eold_selected, sold_selected);
+            
+            // 4. Determine the energy contribution of that particle with the system **in it's trial position**
+            LJ.get_single_particle_contributions(system.coords, selected_atom, trial_position, system.boxdim, enew_selected, snew_selected);
+        // } else {
+            // // Determine contributions to the system's energy, force, and stress due to the selected atom
+            // LJ.get_single_particle_contributions_not_owner(system.coords, selectedAtomCoordsXYZ, system.boxdim, eold_selected, sold_selected);
+            
+            // // 4. Determine the energy contribution of that particle with the system **in it's trial position**
+            // LJ.get_single_particle_contributions_not_owner(system.coords, trial_position, system.boxdim, enew_selected, snew_selected);
+        // }
+
+        // MPI: all ranks other than owner send their energy to the owner (MPI_Reduce(MPI_SUM)) - synchronization point 2
+        // MPI: note - for now, we're not sending the stress. that will require converting to and from xyz again
+        // int MPI_Reduce(const void *sendbuf, void *recvbuf, int count,
+        //        MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm)
+        // mpierr = MPI_Reduce(enew_selected,enew_selected_total,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
 
         if (i >= nequil) // Only do Widom tests for the equilibrated portion of the simulation
         {        
@@ -256,20 +308,20 @@ int main(int argc, char* argv[])
             widom_trials = 1;
         }
         
+        // MPI: owner decides whether to update the position of the selected atom
+        // if so, owner updates the atom's coordinates in its own data (no communication needed)
+        // if(rank==rank_owner) {
+
         // 6. Accept or reject the move
         // If E_old is the energy of the original system and E_new is the system energy when the 
         // particle is at it's trial position, E_old - eold_selected + enew_selected = E_new
         // Therefore delta E, which = E_new - E_old is just enew_selected - eold_selected
         
-        delta_energy = enew_selected - eold_selected;/*write this*/
-        // if((i+1) % (iofrq) == 0)
-        // {
-        //     cout << enew_selected/system.natoms/LJ.epsilon << endl;
-        //     cout << eold_selected/system.natoms/LJ.epsilon << endl;
-        //     cout << delta_energy/system.natoms/LJ.epsilon << endl;
-        //     cout << -(1.0/temp)*delta_energy << endl;
-        //     cout << exp(-(1.0/temp)*delta_energy) << endl;
-        // }
+        delta_energy = enew_selected - eold_selected;
+
+        // MPI: owner decides whether to update the position of the selected atom
+        // MPI: if so, owner updates the atom's coordinates in its own data (no communication needed)
+
         if ( mtrand() < exp(-(1.0/temp)*delta_energy)/*write the acceptance criteria*/ ) // Then accept
         {
             // Then the system energy has decreased **or** our random number is less than our probability to accept
@@ -288,10 +340,15 @@ int main(int argc, char* argv[])
             naccepted_moves++;
         }
 
-        // Update maximum diplacement to target a 50% acceptance rate
-        
+    // }
+
+        // owner boadcasts naccepted_moves to everyone, then everyone updates max_displacement
+        // int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root, 
+        //    MPI_Comm comm )        
+        // mpierr=MPI_Bcast(naccepted_moves,1,MPI_INT,rank_owner,MPI_COMM_WORLD);
+
+        // Update maximum diplacement to target a 50% acceptance rate        
         fraction_accepted = float(naccepted_moves)/float(i+1);
-        
         max_displacement = update_max_displacement(fraction_accepted, system.boxdim.x, max_displacement);
 
         // print statistics if ineeded - don't forget to conver the stress tensor to pressure 
@@ -311,12 +368,13 @@ int main(int argc, char* argv[])
             double avgEsq = stat_avgEsq / float(nrunningav_moves);
             
             Cv = (avgEsq - pow(avgE,2)) / (pow(temp,2)*kB);/*write this - this should only be the dE/dT portion*/
-        }    
+        }
         
    
         if ( (i+1) % iofrq == 0)
         {
-            system.write_frame(i);
+            // MPI: everyone communicates things for writing to rank_IC
+            // system.write_frame(i);
 
 	    cout << "Debug: " << endl;
 	    cout << sigma << endl;
@@ -345,6 +403,9 @@ int main(int argc, char* argv[])
     stat_avgEsq  /= float(nrunningav_moves);
     Cv            =  (stat_avgEsq - pow(stat_avgE,2)) / (kB * pow(temp,2));/*write this, based on average energies - this should only be the dE/dT portion*/
     stat_avgE    *= 1.0/natoms/LJ.epsilon;
+
+    // Finalize MPI
+    // MPI_finalize();
 
     cout << "# Computed average properties: " << endl;
     cout << " # E*/N:  "      << setw(10) << left << fixed << setprecision(5) << stat_avgE << endl;
