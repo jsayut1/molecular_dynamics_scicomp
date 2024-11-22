@@ -1,0 +1,33 @@
+# Number of atoms:       500
+# Atom type:             Ar
+# Molar Mass (g/mol):    39.948
+# Density (g/cm^3):      0.168835
+# LJ sigma (Angstrom):   3.4
+# LJ epsilon/kB (K):     120
+# LJ cutoff (Angstrom):  13.6
+# LJ cutoff (sigma):     4
+# Temperature (K):       144
+# Number MC steps:       20000
+# Output frequency:      2000
+# Num. den. (atoms/Ang): 0.00254427
+# Box length (x):        58.1392
+# Box length (y):        58.1392
+# Box length (z):        58.1392
+# Init. spacing (Ang):   6.45991
+# reduc. density (rho*): 0.1
+# reduc. temp (T*):      1.2
+Step:  1999       NAcc:  1033       fAcc:  0.516      Maxd:  29.06959   E*/N:  -0.72239   P*:     0.07450    P*cold: -0.04550   Mu*_xs: -0.00000   Cv*/N_xs:  0.00000         E(kJ/mol): -360.358   P(bar):    -19.185   
+Step:  3999       NAcc:  2006       fAcc:  0.502      Maxd:  23.68202   E*/N:  -0.74837   P*:     0.10167    P*cold: -0.01833   Mu*_xs: -0.00000   Cv*/N_xs:  0.00000         E(kJ/mol): -373.317   P(bar):    -7.730    
+Step:  5999       NAcc:  3001       fAcc:  0.500      Maxd:  27.52612   E*/N:  -0.84037   P*:     0.08897    P*cold: -0.03103   Mu*_xs: -0.00000   Cv*/N_xs:  0.00000         E(kJ/mol): -419.210   P(bar):    -13.083   
+Step:  7999       NAcc:  3999       fAcc:  0.500      Maxd:  9.99147    E*/N:  -0.85698   P*:     0.08145    P*cold: -0.03855   Mu*_xs: -0.00000   Cv*/N_xs:  0.00000         E(kJ/mol): -427.496   P(bar):    -16.255   
+Step:  9999       NAcc:  5001       fAcc:  0.500      Maxd:  2.00712    E*/N:  -0.87198   P*:     0.07077    P*cold: -0.04923   Mu*_xs: -0.00000   Cv*/N_xs:  0.00000         E(kJ/mol): -434.979   P(bar):    -20.758   
+Step:  11999      NAcc:  6000       fAcc:  0.500      Maxd:  27.64489   E*/N:  -0.89562   P*:     0.07242    P*cold: -0.04758   Mu*_xs: -0.00000   Cv*/N_xs:  0.00000         E(kJ/mol): -446.773   P(bar):    -20.064   
+Step:  13999      NAcc:  6999       fAcc:  0.500      Maxd:  0.58139    E*/N:  -0.82984   P*:     0.07828    P*cold: -0.04172   Mu*_xs: -0.00000   Cv*/N_xs:  0.00000         E(kJ/mol): -413.955   P(bar):    -17.591   
+Step:  15999      NAcc:  8006       fAcc:  0.500      Maxd:  6.64796    E*/N:  -0.83914   P*:     0.07001    P*cold: -0.04999   Mu*_xs: -0.00000   Cv*/N_xs:  0.00000         E(kJ/mol): -418.596   P(bar):    -21.077   
+Step:  17999      NAcc:  8998       fAcc:  0.500      Maxd:  1.74944    E*/N:  -0.77914   P*:     0.08882    P*cold: -0.03118   Mu*_xs: -0.00000   Cv*/N_xs:  0.00000         E(kJ/mol): -388.669   P(bar):    -13.146   
+Step:  19999      NAcc:  10000      fAcc:  0.500      Maxd:  29.06959   E*/N:  -0.82234   P*:     0.06377    P*cold: -0.05623   Mu*_xs: -0.00000   Cv*/N_xs:  0.00000         E(kJ/mol): -410.217   P(bar):    -23.709   
+# Computed average properties: 
+ # E*/N:  -nan      
+ # P*:     -nan      
+ # Cv*/N_xs:   -nan           
+ # Mu_xs:  -0.00000  

@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
     double  numden;                 // System number density; Units: atoms/Ang^3 - will be calculated later on
 
     double  temp    = 1.2*epsilon;  // Temperature, in K
-    double  nsteps  = 5e6;          // Number of MC steps
+    double  nsteps  = 2e4;//5e6;          // Number of MC steps
     int     iofrq   = 2e3;          // Frequency to output statistics and trajectory
     int     nequil  = 1e6;          // Equilibration period (chemical potential and heat capacity only collected after this many steps)
     
