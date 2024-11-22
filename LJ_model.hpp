@@ -77,6 +77,8 @@ void LJ_model::get_single_particle_contributions(const vector<xyz> & coords, int
     static double rij;
     static xyz    rij_vec;
 
+    std::cout<<"Entered func"<<std::endl;
+
     /* Write code to determine the contributions to the total system energy, forces, and stresses due to the selected atom.
     Self interactions should not be included.
 
@@ -92,6 +94,14 @@ void LJ_model::get_single_particle_contributions(const vector<xyz> & coords, int
         // if within the model cutoff - we'll use this if the move is accepted
     
     */
+
+    // std::cout<<"coords size"<<coords.size()<<std::endl;
+    std::cout<<"selected_atom_coords"<<selected_atom_coords.x<<std::endl;
+    std::cout<<"selected_atom_coords"<<selected_atom_coords.y<<std::endl;
+    std::cout<<"selected_atom_coords"<<selected_atom_coords.z<<std::endl;
+    std::cout<<"selected_atom"<<selected_atom<<std::endl;
+
+
     for(int j=0; j<coords.size(); j++)
     {
         // if(coords[j].x==selected_atom_coords.x && coords[j].y==selected_atom_coords.y && coords[j].z==selected_atom_coords.z)

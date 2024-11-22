@@ -221,20 +221,20 @@ int main(int argc, char* argv[])
 
     for (int i=0; i<nsteps; i++)
     {
-        // MPI: rank_IC selects which rank owns the particle that gets pushed (randomly)
+        // // MPI: rank_IC selects which rank owns the particle that gets pushed (randomly)
         // if (rank==rank_IC) {
         //     rank_owner=int(mtrand()*nprocs)
 
-        // MPI: rank_IC sends the owner rank to everyone else (MPI_Bcast)
+        // // MPI: rank_IC sends the owner rank to everyone else (MPI_Bcast)
         // int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root, 
         //    MPI_Comm comm )
         // } 
-        // MPI: everyone receives the owner rank from rank_IC (MPI_Receive)
+        // // MPI: everyone receives the owner rank from rank_IC (MPI_Receive)
 
-        // MPI: everyone calls broadcast 
+        // // MPI: everyone calls broadcast 
         //     mpierr=MPI_Bcast(&rank_owner,1,MPI_INT,rank_IC,MPI_COMM_WORLD);
 
-        // MPI: owner chooses a particle randomly
+        // // MPI: owner chooses a particle randomly
         // if (rank==rank_owner) {
             // Select a random particle. The syntax below shows how to use the random number generator. This generate a random integer between 0 and natoms-1
             // selected_atom = int(mtrand()*system.natoms);
