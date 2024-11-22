@@ -19,6 +19,8 @@ R. K. Lindsey (2023)
 #include "Toolbox.hpp"
 #include "system_coordintaes.hpp"
 #include "LJ_model.hpp"
+#include <omp.h>
+#include <chrono>
 
 using namespace std;
 
@@ -27,6 +29,9 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
+    
+    cout << "Max no. of threads:" << omp_get_max_threads() << endl;
+    omp_set_num_threads(4);
     
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Set user-defined variables (Read in from input file at some point)
@@ -50,7 +55,7 @@ int main(int argc, char* argv[])
     double  numden;                 // System number density; Units: atoms/Ang^3 - will be calculated later on
 
     double  temp    = 1.2*epsilon;  // Temperature, in K
-    double  nsteps  = 5e6;          // Number of MC steps
+    double  nsteps  = 2e4;//5e6;          // Number of MC steps
     int     iofrq   = 2e3;          // Frequency to output statistics and trajectory
     int     nequil  = 1e6;          // Equilibration period (chemical potential and heat capacity only collected after this many steps)
     
@@ -105,7 +110,13 @@ int main(int argc, char* argv[])
     stensor.x = 0;
     stensor.y = 0;
     stensor.z = 0;
-    
+    double sx = 0;
+    double sy = 0;
+    double sz = 0;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for reduction(+:energy, sx, sy, sz) default(shared) private(rij, rij_vec, force)
     for (int i=0; i<system.natoms; i++)                                                                         
     {
         for (int j=i+1; j<system.natoms; j++)
@@ -131,14 +142,28 @@ int main(int argc, char* argv[])
             if(rij<rcut)
             {
                 LJ.get_fij(rij, rij_vec, force);
-                stensor.x += force.x * rij_vec.x;
-                stensor.y += force.y * rij_vec.y;
-                stensor.z += force.z * rij_vec.z;
+                sx += force.x * rij_vec.x;
+                sy += force.y * rij_vec.y;
+                sz += force.z * rij_vec.z;
+                // stensor.x += force.x * rij_vec.x;
+                // stensor.y += force.y * rij_vec.y;
+                // stensor.z += force.z * rij_vec.z;
             
 
             }
         }
     }
+
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double> elapsed = end - start;
+
+    std::cout << "Elapsed time:" << elapsed.count() << "seconds" << std::endl;
+
+    stensor.x = sx;
+    stensor.y = sy;
+    stensor.z = sz;
+    
     //cout << energy/system.natoms/LJ.epsilon << endl;
     
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -178,7 +203,7 @@ int main(int argc, char* argv[])
         // Select a random particle. The syntax below shows how to use the random number generator. This generate a random integer between 0 and natoms-1
         
         selected_atom = int(mtrand()*system.natoms);
-        
+    
         // Determine contributions to the system's energy, force, and stress due to the selected atom 
         
         LJ.get_single_particle_contributions(system.coords, selected_atom, system.coords[selected_atom], system.boxdim, eold_selected, sold_selected);
@@ -190,7 +215,7 @@ int main(int argc, char* argv[])
         // and negative directions, i.e., +/- the maximum displacement
 
         /*write this*/
-
+        
         trial_displacement.x = (mtrand()*2.0-1.0)*max_displacement;
         trial_displacement.y = (mtrand()*2.0-1.0)*max_displacement;
         trial_displacement.z = (mtrand()*2.0-1.0)*max_displacement;
