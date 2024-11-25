@@ -446,10 +446,11 @@ int main(int argc, char* argv[])
         }
         
 
-        MPI_Finalize();
-        return rank_IC;
+        // MPI_Finalize();
+        // return rank_IC;
 
-        if (i >= nequil) // Only do Widom tests for the equilibrated portion of the simulation
+        //if (i >= nequil) // Only do Widom tests for the equilibrated portion of the simulation
+        if (i>=10000000000)
         {        
             // 5. Do a widom insertion test
             
@@ -461,13 +462,13 @@ int main(int argc, char* argv[])
             
             /*write this*/
             
-            widom_position.x = mtrand()*system.boxdim.x;
-            widom_position.y = mtrand()*system.boxdim.y;
-            widom_position.z = mtrand()*system.boxdim.z;
+            widom_position.x = mtrand()*my_system.boxdim.x;
+            widom_position.y = mtrand()*my_system.boxdim.y;
+            widom_position.z = mtrand()*my_system.boxdim.z;
             
             // 5.b Calculate change in system energy due to insertion of new ghost atom 
             
-            LJ.get_single_particle_contributions(system.coords, -1, widom_position, system.boxdim, ewidom, swidom);
+            LJ.get_single_particle_contributions(my_system.coords, -1, widom_position, my_system.boxdim, ewidom, swidom);
             
             // 5.c Update the Widom factor
             
@@ -490,8 +491,9 @@ int main(int argc, char* argv[])
         // If E_old is the energy of the original system and E_new is the system energy when the 
         // particle is at it's trial position, E_old - eold_selected + enew_selected = E_new
         // Therefore delta E, which = E_new - E_old is just enew_selected - eold_selected
-        
+        if (rank==rank_owner){
         delta_energy = enew_selected - eold_selected;
+        
 
         // MPI: owner decides whether to update the position of the selected atom
         // MPI: if so, owner updates the atom's coordinates in its own data (no communication needed)
@@ -513,29 +515,39 @@ int main(int argc, char* argv[])
 
             naccepted_moves++;
         }
+        
+        }
+
 
     // }
 
         // owner boadcasts naccepted_moves to everyone, then everyone updates max_displacement
         // int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root, 
-        //    MPI_Comm comm )        
-        // mpierr=MPI_Bcast(naccepted_moves,1,MPI_INT,rank_owner,MPI_COMM_WORLD);
+        //    MPI_Comm comm )       
+        cout << "naccepted-moves" << naccepted_moves << endl; 
+
+
+
+        MPI_Bcast(&naccepted_moves,1,MPI_INT,rank_owner,MPI_COMM_WORLD);
+        cout << "Arrives here" << endl; 
 
         // Update maximum diplacement to target a 50% acceptance rate        
         fraction_accepted = float(naccepted_moves)/float(i+1);
-        max_displacement = update_max_displacement(fraction_accepted, system.boxdim.x, max_displacement);
+        max_displacement = update_max_displacement(fraction_accepted, my_system.boxdim.x, max_displacement);
 
+
+        if (rank==rank_owner){
         // print statistics if ineeded - don't forget to conver the stress tensor to pressure 
         // Compute instantaneous properties
         
-        pressure = numden*temp + 1.0/3.0/pow(system.boxdim.x,3.0)*(stensor.x + stensor.y + stensor.z);
+        pressure = numden*temp + 1.0/3.0/pow(my_system.boxdim.x,3.0)*(stensor.x + stensor.y + stensor.z);
         Cv       = 0;
 
         if (i >= nequil) // Compute values for running averages, only using the equilibrated portion of the trajectory
         {
             stat_avgE   += energy;
             stat_avgEsq += energy*energy;        
-            stat_avgP   += pressure/LJ.epsilon*pow(LJ.sigma,3.0); // Convert to reduced units! ********
+            stat_avgP   += pressure/my_LJ.epsilon*pow(my_LJ.sigma,3.0); // Convert to reduced units! ********
             nrunningav_moves++;
             
             double avgE   = stat_avgE /float(nrunningav_moves);
@@ -561,14 +573,15 @@ int main(int argc, char* argv[])
             cout << " NAcc:  " << setw(10) << left << setprecision(3) <<  naccepted_moves;
             cout << " fAcc:  " << setw(10) << left << fixed << setprecision(3) << fraction_accepted;
             cout << " Maxd:  " << setw(10) << left << fixed << setprecision(5) << max_displacement;
-            cout << " E*/N:  " << setw(10) << left << fixed << setprecision(5) << energy/natoms/LJ.epsilon;
-            cout << " P*:     " << setw(10) << left << fixed << setprecision(5) << (pressure + temp * redden / pow(LJ.sigma,3.0))/LJ.epsilon*pow(LJ.sigma,3.0)/*write this - this is the reduced pressure*/;
-            cout << " P*cold: " << setw(10) << left << fixed << setprecision(5) << (pressure)/LJ.epsilon*pow(LJ.sigma,3.0) /*write this - this is the reduced Virial component of pressure*/;
-            cout << " Mu*_xs: " << setw(10) << left << fixed << setprecision(5) << (-temp) * log(widom_avg / widom_trials)/*write this - this is excess chemical potential*/; 
-            cout << " Cv*/N_xs:  " << setw(15) << left << fixed << setprecision(5) << Cv/system.natoms*kB/*write this - this is excess heat capacity per atom*/;
+            cout << " E*/N:  " << setw(10) << left << fixed << setprecision(5) << energy/natoms/my_LJ.epsilon;
+            cout << " P*:     " << setw(10) << left << fixed << setprecision(5) << (pressure + temp * redden / pow(my_LJ.sigma,3.0))/my_LJ.epsilon*pow(my_LJ.sigma,3.0)/*write this - this is the reduced pressure*/;
+            cout << " P*cold: " << setw(10) << left << fixed << setprecision(5) << (pressure)/my_LJ.epsilon*pow(my_LJ.sigma,3.0) /*write this - this is the reduced Virial component of pressure*/;
+            // cout << " Mu*_xs: " << setw(10) << left << fixed << setprecision(5) << (-temp) * log(widom_avg / widom_trials)/*write this - this is excess chemical potential*/; 
+            cout << " Cv*/N_xs:  " << setw(15) << left << fixed << setprecision(5) << Cv/my_system.natoms*kB/*write this - this is excess heat capacity per atom*/;
             cout << " E(kJ/mol): " << setw(10) << left << fixed << setprecision(3) << energy * 0.008314; // KJ/mol per K 
             cout << " P(bar):    " << setw(10) << left << fixed << setprecision(3) << pressure * 0.008314 * 10.0e30 * 1000/(6.02*10.0e23)*1.0e-5; // KJ/mol/A^3 to bar
             cout << endl;
+        }
         }
 
     }
