@@ -5,6 +5,9 @@
 #include<vector>
 #include<cmath>
 
+#include<omp.h>
+
+
 #include "MersenneTwiser.h"
 #include "Toolbox.hpp"
 
@@ -72,6 +75,9 @@ void LJ_model::get_single_particle_contributions(const vector<xyz> & coords, int
     force.x = 0;
     force.y = 0;
     force.z = 0;
+    double sx = 0;
+    double sy = 0;
+    double sz = 0;
     
     static double rij;
     static xyz    rij_vec;
@@ -91,6 +97,7 @@ void LJ_model::get_single_particle_contributions(const vector<xyz> & coords, int
         // if within the model cutoff - we'll use this if the move is accepted
     
     */
+   #pragma omp parallel for reduction(+:energy_selected, sx, sy, sz) default(shared) private(rij, rij_vec, force)
     for(int j=0; j<coords.size(); j++)
     {
         // if(coords[j].x==selected_atom_coords.x && coords[j].y==selected_atom_coords.y && coords[j].z==selected_atom_coords.z)
@@ -103,11 +110,15 @@ void LJ_model::get_single_particle_contributions(const vector<xyz> & coords, int
             {
                 energy_selected += get_eij(rij);
                 get_fij(rij,rij_vec,force);
-                stress_selected.x += force.x * rij_vec.x;
-                stress_selected.y += force.y * rij_vec.y;
-                stress_selected.z += force.z * rij_vec.z;
+                sx += force.x * rij_vec.x;
+                sy += force.y * rij_vec.y;
+                sz += force.z * rij_vec.z;
             }
         }
         //still calculating its distance with itself, too.
     }
+    stress_selected.x = sx;
+    stress_selected.y = sy;
+    stress_selected.z = sz;
+
 }
