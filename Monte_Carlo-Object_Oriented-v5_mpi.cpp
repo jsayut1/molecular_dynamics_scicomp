@@ -79,7 +79,8 @@ int main(int argc, char* argv[])
     double  nsteps  = 5e6;          // Number of MC steps
     int     iofrq   = 2e3;          // Frequency to output statistics and trajectory
     int     nequil  = 1e6;          // Equilibration period (chemical potential and heat capacity only collected after this many steps)
-    
+    double stensor_init_x,stensor_init_y,stensor_init_z;
+    double stensor_x,stensor_y,stensor_z;
     //////// Print information for user
 
     cout << "# Number of atoms:       " << natoms     << endl;
@@ -202,6 +203,10 @@ int main(int argc, char* argv[])
         }
     }
 
+    stensor_init_x=stensor.x;
+    stensor_init_y=stensor.y;
+    stensor_init_z=stensor.z;
+
     }
 
 
@@ -225,18 +230,18 @@ int main(int argc, char* argv[])
     // TODO: fix the local system coordinates below, should not generate coordinates more than once
 
 
-    cout << "---------" << endl;
-    cout << "Local system coords!" << endl;
-    cout << "Rank: " << rank     << endl;
-    //my_system.push_back();
-    cout << "   " << endl;
-    cout << "IC system coords " << endl;
-    cout << ICsystem.coords[1].z << endl;
-    cout << ICsystem.coords[2].z << endl;
-    cout << ICsystem.coords[497].x << endl;
-    cout << ICsystem.coords[498].x << endl;
-    cout << ICsystem.coords[499].z << endl;
-    cout << "   " << endl;
+    // cout << "---------" << endl;
+    // cout << "Local system coords!" << endl;
+    // cout << "Rank: " << rank     << endl;
+    // //my_system.push_back();
+    // cout << "   " << endl;
+    // cout << "IC system coords " << endl;
+    // cout << ICsystem.coords[1].z << endl;
+    // cout << ICsystem.coords[2].z << endl;
+    // cout << ICsystem.coords[497].x << endl;
+    // cout << ICsystem.coords[498].x << endl;
+    // cout << ICsystem.coords[499].z << endl;
+    // cout << "   " << endl;
 
     int icnt;
     xyz blank;
@@ -256,14 +261,27 @@ int main(int argc, char* argv[])
     my_system.boxdim.y=ICsystem.boxdim.y;
     my_system.boxdim.z=ICsystem.boxdim.z;
 
-    cout << "Local system coords " << endl;
-    cout << my_system.coords[1].z << endl;
-    cout << my_system.coords[2].z << endl;
-    cout << my_system.coords[247].x << endl;
-    cout << my_system.coords[248].x << endl;
-    cout << my_system.coords[249].z << endl;
-    cout << "   " << endl;
+    // cout << "Local system coords " << endl;
+    // cout << my_system.coords[1].z << endl;
+    // cout << my_system.coords[2].z << endl;
+    // cout << my_system.coords[247].x << endl;
+    // cout << my_system.coords[248].x << endl;
+    // cout << my_system.coords[249].z << endl;
+    // cout << "   " << endl;
 
+    // broadcast stress tensor values
+    mpierr=MPI_Bcast(&stensor_init_x,1,MPI_DOUBLE,rank_IC,MPI_COMM_WORLD);
+    mpierr=MPI_Bcast(&stensor_init_y,1,MPI_DOUBLE,rank_IC,MPI_COMM_WORLD);
+    mpierr=MPI_Bcast(&stensor_init_z,1,MPI_DOUBLE,rank_IC,MPI_COMM_WORLD);
+
+
+    // set stensor of the local stress tensor to be equal to what it is for the IC_system
+    if(rank!=0){
+        stensor.x=stensor_init_x;
+        stensor.y=stensor_init_y;
+        stensor.z=stensor_init_z;
+
+    }
 
 
     //MPI_Finalize();
@@ -289,12 +307,14 @@ int main(int argc, char* argv[])
     xyz     sold_selected;  // Pre-trial-move stress tensor diagonal of the selected atom
     xyz     snew_selected;  // Post-trial-move stress tensor diagonal of the selected atom
 
+
     xyz     trial_displacement;    
     xyz     trial_position;
     
     int     naccepted_moves = 0;    // Number of accepted moves
     double  fraction_accepted;      // Fraction of attempted moves that have been accepted
     int     nrunningav_moves = 0;   // Move index for running averages (doesn't start until equilibration period has ended)
+    int entered_loop;
 
     double pressure;
     double Cv;
@@ -313,6 +333,19 @@ int main(int argc, char* argv[])
     xyz selectedAtomCoordsXYZ;
     double enew_selected_total;
     double eold_selected_total;
+    double snew_total_x;
+    double snew_total_y;
+    double snew_total_z;
+    double sold_total_x;
+    double sold_total_y;
+    double sold_total_z;
+    double snew_selected_x;
+    double snew_selected_y;
+    double snew_selected_z;
+    double sold_selected_x;
+    double sold_selected_y;
+    double sold_selected_z;
+
 
 
     for (int i=0; i<nsteps; i++)
@@ -359,10 +392,6 @@ int main(int argc, char* argv[])
             trial_position.z = trial_displacement.z + my_system.coords[selected_atom].z;
             
             // // 3. Apply PBC if the particle has moved outside the box
-            cout << "box dim" << endl;
-            cout << my_system.boxdim.x << endl;
-            cout << my_system.boxdim.y << endl;
-            cout << my_system.boxdim.z << endl;
 
             trial_position.x -= floor(trial_position.x/my_system.boxdim.x)*my_system.boxdim.x;
             trial_position.y -= floor(trial_position.y/my_system.boxdim.y)*my_system.boxdim.y;
@@ -417,21 +446,38 @@ int main(int argc, char* argv[])
             
             // 4. Determine the energy contribution of that particle with the system **in it's trial position**
             LJ.get_single_particle_contributions(my_system.coords, selected_atom, trial_position, my_system.boxdim, enew_selected, snew_selected);
+        
+            // make stress into doubles
+            sold_selected_x=sold_selected.x;
+            sold_selected_y=sold_selected.y;
+            sold_selected_z=sold_selected.z;
+            snew_selected_x=snew_selected.x;
+            snew_selected_y=snew_selected.y;
+            snew_selected_z=snew_selected.z;
+
+        
         } else {
             // // Determine contributions to the system's energy, force, and stress due to the selected atom
             LJ.get_single_particle_contributions_not_owner(my_system.coords, selectedAtomCoordsXYZ, my_system.boxdim, eold_selected, sold_selected);
             
             // // 4. Determine the energy contribution of that particle with the system **in it's trial position**
             LJ.get_single_particle_contributions_not_owner(my_system.coords, trial_position, my_system.boxdim, enew_selected, snew_selected);
+
+            // make stress into doubles
+            sold_selected_x=sold_selected.x;
+            sold_selected_y=sold_selected.y;
+            sold_selected_z=sold_selected.z;
+            snew_selected_x=snew_selected.x;
+            snew_selected_y=snew_selected.y;
+            snew_selected_z=snew_selected.z;
         }
 
-        // cout  << "enew_selected"<<  enew_selected << endl;
 
         // if (rank==rank_owner) {
         //     cout << "enew_selected_total" <<  enew_selected_total << endl;
         // }
         
-        
+
         // MPI: all ranks other than owner send their energy to the owner (MPI_Reduce(MPI_SUM)) - synchronization point 2
         // MPI: note - for now, we're not sending the stress. that will require converting to and from xyz again
         // int MPI_Reduce(const void *sendbuf, void *recvbuf, int count,
@@ -439,12 +485,14 @@ int main(int argc, char* argv[])
         mpierr = MPI_Reduce(&enew_selected,&enew_selected_total,1,MPI_DOUBLE,MPI_SUM,rank_owner,MPI_COMM_WORLD);
         mpierr = MPI_Reduce(&eold_selected,&eold_selected_total,1,MPI_DOUBLE,MPI_SUM,rank_owner,MPI_COMM_WORLD);
 
-        cout  << "enew_selected"<<  enew_selected << endl;
+        // MPI reduces for each component of the stress
+        mpierr = MPI_Reduce(&sold_selected_x,&sold_total_x,1,MPI_DOUBLE,MPI_SUM,rank_owner,MPI_COMM_WORLD);
+        mpierr = MPI_Reduce(&sold_selected_y,&sold_total_y,1,MPI_DOUBLE,MPI_SUM,rank_owner,MPI_COMM_WORLD);
+        mpierr = MPI_Reduce(&sold_selected_z,&sold_total_z,1,MPI_DOUBLE,MPI_SUM,rank_owner,MPI_COMM_WORLD);
+        mpierr = MPI_Reduce(&snew_selected_x,&snew_total_x,1,MPI_DOUBLE,MPI_SUM,rank_owner,MPI_COMM_WORLD);
+        mpierr = MPI_Reduce(&snew_selected_y,&snew_total_y,1,MPI_DOUBLE,MPI_SUM,rank_owner,MPI_COMM_WORLD);
+        mpierr = MPI_Reduce(&snew_selected_z,&snew_total_z,1,MPI_DOUBLE,MPI_SUM,rank_owner,MPI_COMM_WORLD);
 
-        if (rank==rank_owner) {
-            cout << "enew_selected_total" <<  enew_selected_total << endl;
-        }
-        
 
         // MPI_Finalize();
         // return rank_IC;
@@ -494,7 +542,7 @@ int main(int argc, char* argv[])
         if (rank==rank_owner){
         delta_energy = enew_selected - eold_selected;
         
-
+        entered_loop=0;
         // MPI: owner decides whether to update the position of the selected atom
         // MPI: if so, owner updates the atom's coordinates in its own data (no communication needed)
 
@@ -505,15 +553,26 @@ int main(int argc, char* argv[])
             
             /*write this*/
 
-            system.coords[selected_atom] = trial_position;
+            my_system.coords[selected_atom] = trial_position;
 
             energy += delta_energy;
 
-            stensor.x = stensor.x + snew_selected.x - sold_selected.x;
-            stensor.y = stensor.y + snew_selected.y - sold_selected.y;
-            stensor.z = stensor.z + snew_selected.z - sold_selected.z;
+
+
+            stensor.x = stensor.x + snew_total_x - sold_total_x;
+            stensor.y = stensor.y + snew_total_y - sold_total_y;
+            stensor.z = stensor.z + snew_total_z - sold_total_z;
 
             naccepted_moves++;
+            entered_loop=1;
+
+            stensor_x=stensor.x;
+            stensor_y=stensor.y;
+            stensor_z=stensor.z;
+
+
+
+
         }
         
         }
@@ -524,16 +583,31 @@ int main(int argc, char* argv[])
         // owner boadcasts naccepted_moves to everyone, then everyone updates max_displacement
         // int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root, 
         //    MPI_Comm comm )       
-        cout << "naccepted-moves" << naccepted_moves << endl; 
 
+        MPI_Bcast(&stensor_x,1,MPI_DOUBLE,rank_owner,MPI_COMM_WORLD);
+        MPI_Bcast(&stensor_y,1,MPI_DOUBLE,rank_owner,MPI_COMM_WORLD);
+        MPI_Bcast(&stensor_z,1,MPI_DOUBLE,rank_owner,MPI_COMM_WORLD);
 
+        MPI_Bcast(&entered_loop,1,MPI_INT,rank_owner,MPI_COMM_WORLD);
 
         MPI_Bcast(&naccepted_moves,1,MPI_INT,rank_owner,MPI_COMM_WORLD);
-        cout << "Arrives here" << endl; 
+
+        if(entered_loop==1 & rank!=rank_owner){ // add stensors back into the system so that 
+            stensor.x=stensor_x;
+            stensor.y=stensor_y;
+            stensor.z=stensor_z;
+
+
+
+
+        }
+
 
         // Update maximum diplacement to target a 50% acceptance rate        
         fraction_accepted = float(naccepted_moves)/float(i+1);
         max_displacement = update_max_displacement(fraction_accepted, my_system.boxdim.x, max_displacement);
+
+
 
 
         if (rank==rank_owner){
@@ -557,6 +631,7 @@ int main(int argc, char* argv[])
         }
         
    
+
         if ( (i+1) % iofrq == 0)
         {
             // MPI: everyone communicates things for writing to rank_IC
@@ -582,7 +657,10 @@ int main(int argc, char* argv[])
             cout << " P(bar):    " << setw(10) << left << fixed << setprecision(3) << pressure * 0.008314 * 10.0e30 * 1000/(6.02*10.0e23)*1.0e-5; // KJ/mol/A^3 to bar
             cout << endl;
         }
+        
         }
+
+
 
     }
     
