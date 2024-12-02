@@ -211,7 +211,8 @@ int main(int argc, char* argv[])
 
 
     // Broadcast ICsystem
-    MPI_Bcast(&ICsystem, 1, system_coordinates_type, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&ICsystem, 1, system_coordinates_type, rank_IC, MPI_COMM_WORLD);
+    MPI_Bcast(&energy, 1, MPI_DOUBLE, rank_IC, MPI_COMM_WORLD);
 
     // Broadcast coords (std::vector<xyz>) manually
     int coords_size = ICsystem.coords.size();
@@ -330,9 +331,11 @@ int main(int argc, char* argv[])
     // declarations for MPI communication variables
     double selectedAtomCoords[3];
     double trialPosition[3];
+
     xyz selectedAtomCoordsXYZ;
     double enew_selected_total;
     double eold_selected_total;
+
     double snew_total_x;
     double snew_total_y;
     double snew_total_z;
@@ -419,6 +422,9 @@ int main(int argc, char* argv[])
         mpierr=MPI_Bcast(selectedAtomCoords,3,MPI_DOUBLE,rank_owner,MPI_COMM_WORLD);
         mpierr=MPI_Bcast(trialPosition,3,MPI_DOUBLE,rank_owner,MPI_COMM_WORLD);
 
+
+
+
         // convert back to C data types
         selectedAtomCoordsXYZ.x=selectedAtomCoords[0];
         selectedAtomCoordsXYZ.y=selectedAtomCoords[1];
@@ -428,10 +434,14 @@ int main(int argc, char* argv[])
         trial_position.z=trialPosition[2];
 
 
-        // cout << "selected atom coords " << endl;
+
+        // cout << "selected atom coords rank " << rank << endl;
         // cout << selectedAtomCoordsXYZ.x << endl;
         // cout << selectedAtomCoordsXYZ.y << endl;
         // cout << selectedAtomCoordsXYZ.z << endl;
+        // cout << "     " << endl;
+
+
         // cout << my_system.coords[248].x << endl;
         // cout << my_system.coords[249].z << endl;
         
@@ -476,7 +486,17 @@ int main(int argc, char* argv[])
         // if (rank==rank_owner) {
         //     cout << "enew_selected_total" <<  enew_selected_total << endl;
         // }
-        
+
+        // cout << "Iteration: " << i << " Owner rank is " << rank_owner << endl;
+
+        // cout << "Before" << endl;
+        // cout << "E new total <before> rank=" << rank << endl;
+        // cout << enew_selected_total << endl;
+        // cout << " " << endl;
+
+        // cout << "E new selected <before> rank=" << rank << endl;
+        // cout << enew_selected << endl;
+        // cout << " " << endl;
 
         // MPI: all ranks other than owner send their energy to the owner (MPI_Reduce(MPI_SUM)) - synchronization point 2
         // MPI: note - for now, we're not sending the stress. that will require converting to and from xyz again
@@ -494,8 +514,29 @@ int main(int argc, char* argv[])
         mpierr = MPI_Reduce(&snew_selected_z,&snew_total_z,1,MPI_DOUBLE,MPI_SUM,rank_owner,MPI_COMM_WORLD);
 
 
+
+        // cout << "After" << endl;
+        // cout << "" << endl;
+
+
+        // cout << "E new total <after> rank=" << rank << endl;
+        // cout << enew_selected_total << endl;
+        // cout << " " << endl;
+
+        // cout << "E new selected <after> rank=" << rank << endl;
+        // cout << enew_selected << endl;
+        // cout << " " << endl;
+        
+
+
+
+
+
+        // if (i>3){
         // MPI_Finalize();
         // return rank_IC;
+        // }
+
 
         //if (i >= nequil) // Only do Widom tests for the equilibrated portion of the simulation
         if (i>=10000000000)
@@ -540,7 +581,7 @@ int main(int argc, char* argv[])
         // particle is at it's trial position, E_old - eold_selected + enew_selected = E_new
         // Therefore delta E, which = E_new - E_old is just enew_selected - eold_selected
         if (rank==rank_owner){
-        delta_energy = enew_selected - eold_selected;
+        delta_energy = enew_selected_total - eold_selected_total;
         
         entered_loop=0;
         // MPI: owner decides whether to update the position of the selected atom
@@ -574,8 +615,11 @@ int main(int argc, char* argv[])
 
 
         }
-        
+
         }
+
+
+        MPI_Bcast(&energy,1,MPI_DOUBLE,rank_owner,MPI_COMM_WORLD);
 
 
     // }
@@ -606,7 +650,6 @@ int main(int argc, char* argv[])
         // Update maximum diplacement to target a 50% acceptance rate        
         fraction_accepted = float(naccepted_moves)/float(i+1);
         max_displacement = update_max_displacement(fraction_accepted, my_system.boxdim.x, max_displacement);
-
 
 
 

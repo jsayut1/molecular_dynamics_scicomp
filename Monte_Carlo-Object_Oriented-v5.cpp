@@ -215,8 +215,8 @@ int main(int argc, char* argv[])
     
         LJ.get_single_particle_contributions(system.coords, selected_atom, trial_position, system.boxdim, enew_selected, snew_selected);
 
-        cout  << "enew_selected"<<  enew_selected << endl;
-        return 0;
+        //cout  << "enew_selected"<<  enew_selected << endl;
+        //return 0;
 
         if (i >= nequil) // Only do Widom tests for the equilibrated portion of the simulation
         {        
