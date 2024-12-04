@@ -125,7 +125,8 @@ int main(int argc, char* argv[])
 
     create_system_coordinates_mpi(&system_coordinates_type);
     system_coordinates ICsystem(natoms, atmtyp, density, molmass);
-    
+    // system_coordinates* ICsystem=new system_coordinates(natoms, atmtyp, density, molmass);
+
 
     if(rank==0){
     ICsystem.generate_coords();
@@ -350,6 +351,13 @@ int main(int argc, char* argv[])
     double sold_selected_z;
 
 
+    // delete ICsystem from memory on all processors
+    // delete ICsystem;
+    ICsystem.~system_coordinates();
+
+    // test deletion - should throw an error, but doesn't
+    // std::cout<<ICsystem.boxdim.x<<std::endl;
+    // exit(1);
 
     for (int i=0; i<nsteps; i++)
     {
@@ -653,7 +661,8 @@ int main(int argc, char* argv[])
 
 
 
-        if (rank==rank_owner){
+        // if (rank==rank_owner){
+        if (rank==rank_IC){
         // print statistics if ineeded - don't forget to conver the stress tensor to pressure 
         // Compute instantaneous properties
         
@@ -705,22 +714,25 @@ int main(int argc, char* argv[])
 
 
 
-    }
+    } // end loop over steps
     
-    stat_avgE    /= float(nrunningav_moves);
-    stat_avgEsq  /= float(nrunningav_moves);
-    Cv            =  (stat_avgEsq - pow(stat_avgE,2)) / (kB * pow(temp,2));/*write this, based on average energies - this should only be the dE/dT portion*/
-    stat_avgE    *= 1.0/natoms/LJ.epsilon;
+    
+    if (rank==rank_IC) {
+        stat_avgE    /= float(nrunningav_moves);
+        stat_avgEsq  /= float(nrunningav_moves);
+        Cv            =  (stat_avgEsq - pow(stat_avgE,2)) / (kB * pow(temp,2));/*write this, based on average energies - this should only be the dE/dT portion*/
+        stat_avgE    *= 1.0/natoms/LJ.epsilon;
+
+        cout << "# Computed average properties: " << endl;
+        cout << " # E*/N:  "      << setw(10) << left << fixed << setprecision(5) << stat_avgE << endl;
+        cout << " # P*:     "     << setw(10) << left << fixed << setprecision(5) << (stat_avgP / float(nrunningav_moves))+(temp * redden / LJ.epsilon) << endl;
+        cout << " # Cv*/N_xs:   " << setw(15) << left << fixed << setprecision(5) << Cv/system.natoms*kB/*write this - this is excess heat capacity per atom based on average energies*/ << endl;
+        // cout << " # Mu_xs:  "     << setw(10) << left << fixed << setprecision(5) << (-temp) * log(widom_avg / widom_trials)/*write this - this is excess chemical potential*/ << endl;       
+    
+    }
 
     // Finalize MPI
-    // MPI_finalize();
-
-    cout << "# Computed average properties: " << endl;
-    cout << " # E*/N:  "      << setw(10) << left << fixed << setprecision(5) << stat_avgE << endl;
-    cout << " # P*:     "     << setw(10) << left << fixed << setprecision(5) << (stat_avgP / float(nrunningav_moves))+(temp * redden / LJ.epsilon) << endl;
-    cout << " # Cv*/N_xs:   " << setw(15) << left << fixed << setprecision(5) << Cv/system.natoms*kB/*write this - this is excess heat capacity per atom based on average energies*/ << endl;
-    cout << " # Mu_xs:  "     << setw(10) << left << fixed << setprecision(5) << (-temp) * log(widom_avg / widom_trials)/*write this - this is excess chemical potential*/ << endl;       
-    
+    MPI_Finalize();
 }
 
 
