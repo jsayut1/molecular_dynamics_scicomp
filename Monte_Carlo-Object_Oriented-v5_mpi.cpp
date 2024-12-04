@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
     double  epsilon = 120;          // Units: K/k_B
     double  rcut    = 4*sigma;      // Model outer cutoff
     
-    int     natoms  = 500;          // Number of atoms in the system
+    int     natoms  = 4000;          // Number of atoms in the system
     string  atmtyp  = "Ar";         // Atom type (atomic symbol)
     double  molmass = 39.948;       // Mass of an particle of atmtyp (Atomic mass in the case of an argon atom)
     double  density = redden / pow(A2m,3.0) * pow(cm2m,3.0) / nav * molmass / pow(sigma,3.0);     // System density; Units: g/cm^3
@@ -353,7 +353,7 @@ int main(int argc, char* argv[])
 
     // delete ICsystem from memory on all processors
     // delete ICsystem;
-    ICsystem.~system_coordinates();
+    // ICsystem.~system_coordinates();
 
     // test deletion - should throw an error, but doesn't
     // std::cout<<ICsystem.boxdim.x<<std::endl;
@@ -689,11 +689,11 @@ int main(int argc, char* argv[])
             // MPI: everyone communicates things for writing to rank_IC
             // system.write_frame(i);
 
-	    cout << "Debug: " << endl;
-	    cout << sigma << endl;
-	    cout << pressure << endl;
-	    cout << temp << endl; 
-	    cout << redden << endl;
+	    // cout << "Debug: " << endl;
+	    // cout << sigma << endl;
+	    // cout << pressure << endl;
+	    // cout << temp << endl; 
+	    // cout << redden << endl;
 
 
             cout << "Step:  " << setw(10) << left << i;
